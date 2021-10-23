@@ -1,0 +1,50 @@
+{
+	"policy": {
+		"phases": {
+			"hot": {
+				"actions": {
+					"set_priority" : {
+            			"priority": 100
+          			},
+					"rollover": {
+						"max_primary_shard_size": "10KB",
+						"max_age": "10m"
+					}
+				}
+			},
+			
+			"warm": {
+				"actions": {
+					"set_priority" : {
+            			"priority": 50
+          			},
+          			"allocate": {
+          				"number_of_replicas": 2
+          			}
+          		}
+			},
+			
+			"cold": {
+				"actions" : {
+					"readonly": {},
+					"set_priority" : {
+            			"priority": 0
+          			},
+          			"allocate" : {
+						"number_of_replicas": 1,
+						"require" : {
+						  "box_type": "cold"
+						}
+					}
+				}
+			},
+			
+			"delete": {
+				"min_age": "40m",
+				"actions": {
+					"delete": {}
+				}
+			}
+		}
+	}
+}
