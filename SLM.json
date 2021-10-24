@@ -1,0 +1,13 @@
+{
+  "schedule": "0 1 * * * ?", 
+  "name": "<snap-{now/d}>", 
+  "repository": "backup", 
+  "config": { 
+    "indices": ["*"] 
+  },
+  "retention": { 
+    "expire_after": "10m", 
+    "min_count": 3, 
+    "max_count": 15 
+  }
+}
