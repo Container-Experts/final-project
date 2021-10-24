@@ -13,31 +13,33 @@
         }
       },
       "warm": {
+      	"min_age": "3m",
         "actions": {
           "set_priority": {
             "priority": 50
-          },
+          }, 
           "allocate": {
-            "number_of_replicas": 2
+          	"require": {
+          		"box_type": "warm"
+          	}
           }
         }
       },
       "cold": {
+      	"min_age": "10m",
         "actions": {
-          "readonly": {},
           "set_priority": {
             "priority": 0
-          },
+          }, 
           "allocate": {
-            "number_of_replicas": 1,
-            "require": {
-              "box_type": "cold"
-            }
+          	"require": {
+          		"box_type": "cold"
+          	}
           }
         }
       },
       "delete": {
-        "min_age": "40m",
+        "min_age": "30m",
         "actions": {
           "delete": {}
         }
