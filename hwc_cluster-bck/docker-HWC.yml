@@ -1,0 +1,180 @@
+version: '3.6'
+services:
+# elasticsearch server 1
+  elastic01:
+    build:
+      context: elasticsearch/
+      args:
+        ELK_VERSION: $ELK_VERSION
+    container_name: elastic01
+    environment:
+      - node.name=elastic01
+      - discovery.seed_hosts=elastic02,elastic03
+        # - cluster.initial_master_nodes=elastic01,elastic02,elastic03
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xmx512m -Xms512m"
+      - "ELASTIC_PASSWORD=changeme"
+      - "node.attr.box_type=hot"
+      # Use single node discovery in order to disable production mode and avoid bootstrap checks
+      # see https://www.elastic.co/guide/en/elasticsearch/reference/current/bootstrap-checks.html
+      - "discovery.type=single-node"
+    hostname: elastic01
+    networks:
+      - elk
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - type: bind
+        source: ./elasticsearch/config/elasticsearch.yml
+        target: /usr/share/elasticsearch/config/elasticsearch.yml
+        read_only: true
+      - datos_es01:/usr/share/elasticsearch/data
+      - datos_repo:/usr/share/elasticsearch/testrepo 
+      - /etc/localtime:/etc/localtime:ro
+# elasticsearch server 2
+  elastic02:
+    build:
+      context: elasticsearch/
+      args:
+        ELK_VERSION: $ELK_VERSION
+    container_name: elastic02
+    environment:
+      - node.name=elastic02
+      - discovery.seed_hosts=elastic01,elastic03
+      # - cluster.initial_master_nodes=elastic01,elastic02,elastic03
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xmx512m -Xms512m"
+      - "node.attr.box_type=warm"
+      # - ELASTIC_PASSWORD: changeme
+      # Use single node discovery in order to disable production mode and avoid bootstrap checks
+      # see https://www.elastic.co/guide/en/elasticsearch/reference/current/bootstrap-checks.html
+      - "discovery.type=single-node"
+    hostname: elastic02
+    networks:
+      - elk
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - type: bind
+        source: ./elasticsearch/config/elasticsearch.yml
+        target: /usr/share/elasticsearch/config/elasticsearch.yml
+        read_only: true
+      - datos_es02:/usr/share/elasticsearch/data
+      - datos_repo:/usr/share/elasticsearch/testrepo
+      - /etc/localtime:/etc/localtime:ro
+# elasticsearch server 3
+  elastic03:
+    build:
+      context: elasticsearch
+      args:
+        ELK_VERSION: $ELK_VERSION
+    container_name: elastic03
+    environment:
+      - node.name=elastic03
+      - discovery.seed_hosts=elastic01,elastic02
+      # - cluster.initial_master_nodes=elastic01,elastic02,elastic03
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xmx512m -Xms512m"
+      - "node.attr.box_type=cold"
+      # - ELASTIC_PASSWORD: changeme
+      # Use single node discovery in order to disable production mode and avoid bootstrap checks
+      # see https://www.elastic.co/guide/en/elasticsearch/reference/current/bootstrap-checks.html
+      - "discovery.type=single-node"
+    hostname: elastic03
+    networks:
+      - elk
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - type: bind
+        source: ./elasticsearch/config/elasticsearch.yml
+        target: /usr/share/elasticsearch/config/elasticsearch.yml
+        read_only: true
+      - datos_es03:/usr/share/elasticsearch/data
+      - datos_repo:/usr/share/elasticsearch/testrepo
+      - /etc/localtime:/etc/localtime:ro
+
+# Logstash server
+  logstash:
+    build:
+      context: logstash/
+      args:
+        ELK_VERSION: $ELK_VERSION
+    container_name: logstash
+    depends_on:
+      - elastic01
+    environment:
+      LS_JAVA_OPTS: "-Xmx512m -Xms512m"
+    # extra_hosts: *hosts
+    hostname: logstash
+    networks:
+      - elk
+    ports:
+      - "5000:5000"
+      - "9600:9600"
+    restart: on-failure
+    volumes:
+      - type: bind
+        source: ./logstash/config/logstash.yml
+        target: /usr/share/logstash/config/logstash.yml
+        read_only: true
+      - type: bind
+        source: ./logstash/pipeline/logstash.conf
+        #source: ./docker/config/logstash-std-output.conf
+        target: /usr/share/logstash/pipeline/logstash.conf
+        #target: /usr/share/logstash/pipeline/logstash-std-output.conf
+        read_only: true
+      - /etc/localtime:/etc/localtime:ro
+      #- ./logs:/data/logs
+# Kibana server
+  kibana:
+    build:
+      context: kibana/
+      #      dockerfile: docker/Dockerfile.kibana
+      args:
+        ELK_VERSION: $ELK_VERSION
+    container_name: kibana
+    depends_on:
+      - elastic01
+    hostname: kibana
+    networks:
+      - elk
+    ports:
+      - "5601:5601"
+    volumes:
+      - type: bind
+        source: ./kibana/config/kibana.yml
+        target: /usr/share/kibana/config/kibana.yml
+        read_only: true
+      - /etc/localtime:/etc/localtime:ro
+  data-gen:
+    build:
+      context: data_gen/
+    container_name: data-gen
+    depends_on:
+      - elastic01
+      - elastic02
+      - elastic03
+      - logstash
+    hostname: data-gen
+    networks:
+      - elk
+# Custom network with static IPs
+networks:
+  elk:
+    driver: bridge
+# Persistent data volumes
+volumes:
+  datos_es01:
+  datos_es02:
+  datos_es03:
+  datos_repo:

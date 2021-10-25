@@ -1,0 +1,216 @@
+version: '3.6'
+# x-hosts:
+#   &hosts
+#  - "rdms-git:10.3.17.10"
+#  - "rdms-icat:10.3.17.11"
+#  - "rdms-irods:10.3.17.12"
+#  - "rdms-resc00:10.3.17.13"
+#  - "rdms-resc10:10.3.17.14"
+#  - "rdms-resc20:10.3.17.15"
+#  - "rdms-database:10.3.17.16"
+#  - "rdms-dbrest:10.3.17.17"
+#  - "rdms-login:10.3.17.18"
+#  - "rdms-webservice:10.3.17.19"
+#  - "rdms-webserver:10.3.17.20"
+#  - "rdms-proxy:10.3.17.21"
+#  - "rdms-rabbit:10.3.17.22"
+#  - "elasticsearch:10.3.17.23"
+#  - "elasticsearch02:10.3.17.24"
+#  - "elasticsearch03:10.3.17.25"
+#  - "logstash:10.3.17.26"
+#  - "kibana:10.3.17.27"
+#  - "davrods:10.3.17.28"
+#  - "ubuntu-davfs2:10.3.17.29"
+services:
+# elasticsearch server 1
+  elastic01:
+    build:
+      context: elasticsearch/
+      # dockerfile: docker/Dockerfile.elasticsearch
+      args:
+        ELK_VERSION: $ELK_VERSION
+    container_name: elastic01
+    environment:
+      - node.name=elastic01
+      - discovery.seed_hosts=elastic02,elastic03
+      - cluster.initial_master_nodes=elastic,elastic,elastic03
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xmx512m -Xms512m"
+      - "ELASTIC_PASSWORD=changeme"
+      - "node.attr.box_type=hot"
+      # Use single node discovery in order to disable production mode and avoid bootstrap checks
+      # see https://www.elastic.co/guide/en/elasticsearch/reference/current/bootstrap-checks.html
+      # - "discovery.type=single-node"
+    # extra_hosts: *hosts
+    hostname: elastic01
+    # networks:
+    #   static:
+    #     ipv4_address: 10.3.17.23
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - type: bind
+        source: ./elasticsearch/config/elasticsearch.yml
+        target: /usr/share/elasticsearch/config/elasticsearch.yml
+        read_only: true
+      - datos_es01:/usr/share/elasticsearch/data
+      - datos_repo:/usr/share/elasticsearch/testrepo 
+      - /etc/localtime:/etc/localtime:ro
+# elasticsearch server 2
+  elastic02:
+    build:
+      context: elasticsearch/
+      # dockerfile: docker/Dockerfile.elasticsearch
+      args:
+        ELK_VERSION: $ELK_VERSION
+    container_name: elastic02
+    environment:
+      - node.name=elastic02
+      - discovery.seed_hosts=elastic01,elastic03
+      - cluster.initial_master_nodes=elastic,elastic02,elastic03
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xmx512m -Xms512m"
+      - "node.attr.box_type=warm"
+      # - ELASTIC_PASSWORD: changeme
+      # Use single node discovery in order to disable production mode and avoid bootstrap checks
+      # see https://www.elastic.co/guide/en/elasticsearch/reference/current/bootstrap-checks.html
+      # - "discovery.type=single-node"
+      #    extra_hosts: *hosts
+    hostname: elastic02
+    # networks:
+    #   static:
+    #     ipv4_address: 10.3.17.24
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - type: bind
+        source: ./elasticsearch/config/elasticsearch.yml
+        target: /usr/share/elasticsearch/config/elasticsearch.yml
+        read_only: true
+      - datos_es02:/usr/share/elasticsearch/data
+      - datos_repo:/usr/share/elasticsearch/testrepo
+      - /etc/localtime:/etc/localtime:ro
+# elasticsearch server 3
+  elastic03:
+    build:
+      context: elasticsearch
+      # dockerfile: docker/Dockerfile.elasticsearch
+      args:
+        ELK_VERSION: $ELK_VERSION
+    container_name: elastic03
+    environment:
+      - node.name=elastic03
+      - discovery.seed_hosts=elastic01,elastic02
+      - cluster.initial_master_nodes=elastic01,elastic02,elastic03
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xmx512m -Xms512m"
+      - "node.attr.box_type=cold"
+      # - ELASTIC_PASSWORD: changeme
+      # Use single node discovery in order to disable production mode and avoid bootstrap checks
+      # see https://www.elastic.co/guide/en/elasticsearch/reference/current/bootstrap-checks.html
+      # - "discovery.type=single-node"
+      #    extra_hosts: *hosts
+    hostname: elastics03
+    # networks:
+    #   static:
+    #     ipv4_address: 10.3.17.25
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - type: bind
+        source: ./elasticsearch/config/elasticsearch.yml
+        target: /usr/share/elasticsearch/config/elasticsearch.yml
+        read_only: true
+      # - type: bind
+      #   source: ./docker/config/elasticsearch
+      #   target: /etc/sysconfig/elasticsearch
+      #   read_only: true
+      - datos_es03:/usr/share/elasticsearch/data
+      - datos_repo:/usr/share/elasticsearch/testrepo
+      - /etc/localtime:/etc/localtime:ro
+
+# Logstash server
+  logstash:
+    build:
+      context: logstash/
+      # dockerfile: docker/Dockerfile.logstash
+      args:
+        ELK_VERSION: $ELK_VERSION
+    container_name: logstash
+    depends_on:
+      - elastic01
+    environment:
+      LS_JAVA_OPTS: "-Xmx512m -Xms512m"
+    # extra_hosts: *hosts
+    hostname: logstash
+    # networks:
+    #   static:
+    #     ipv4_address: 10.3.17.26
+    ports:
+      - "5000:5000"
+      - "9600:9600"
+    restart: on-failure
+    volumes:
+      - type: bind
+        source: ./logstash/config/logstash.yml
+        target: /usr/share/logstash/config/logstash.yml
+        read_only: true
+        #      - type: bind
+        #        source: ./docker/config/compact_event2.rb
+        #        target: /etc/logstash/compact_event2.rb
+        #        read_only: true
+      - type: bind
+        source: ./logstash/config/pipeline/logstash.conf
+        #source: ./docker/config/logstash-std-output.conf
+        target: /usr/share/logstash/pipeline/logstash.conf
+        #target: /usr/share/logstash/pipeline/logstash-std-output.conf
+        read_only: true
+      - /etc/localtime:/etc/localtime:ro
+      #- ./logs:/data/logs
+# Kibana server
+  kibana:
+    build:
+      context: kibana/
+      #      dockerfile: docker/Dockerfile.kibana
+      args:
+        ELK_VERSION: $ELK_VERSION
+    container_name: kibana
+    depends_on:
+      - elastic01
+#    extra_hosts: *hosts
+    hostname: kibana
+    # networks:
+    #   static:
+    #     ipv4_address: 10.3.17.27
+    ports:
+      - "5601:5601"
+    volumes:
+      - type: bind
+        source: ./kibana/config/kibana.yml
+        target: /usr/share/kibana/config/kibana.yml
+        read_only: true
+      - /etc/localtime:/etc/localtime:ro
+# Custom network with static IPs
+networks:
+  elk:
+    driver: bridge
+#   static:
+#     ipam:
+#       driver: default
+#       config:
+#         - subnet: 10.3.17.0/24
+# Persistent data volumes
+volumes:
+  datos_es01:
+  datos_es02:
+  datos_es03:
+  datos_repo:
