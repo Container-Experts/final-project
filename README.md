@@ -121,11 +121,11 @@ En esta parte vamos a instalar las políticas de ILM y SLM que va a manejar el s
 	} 	
 	
 ```
-	* En la fase HOT, se crea la política de rollover para que no escriba en un mismo índice indefinidamente. Esto para aprovechar más los recursos del cluster y mejorar el rendimiento. Se le coloca una prioridad máxmia a la hora de ser candidatos para búsquedas.
+* En la fase HOT, se crea la política de rollover para que no escriba en un mismo índice indefinidamente. Esto para aprovechar más los recursos del cluster y mejorar el rendimiento. Se le coloca una prioridad máxmia a la hora de ser candidatos para búsquedas.
 	
-	* En la fase WARM, se le indica que solo los índices con edad mayor a tres minutos pueden ser llevados a esta etapa, con una prioridad de búsqueda media. Aquí, solo los índices que tengan la configuración de "WARM" en su construcción podrán ser candidatos, a diferencia de la etapa HOT, donde cualquiera puede alojar información.
+* En la fase WARM, se le indica que solo los índices con edad mayor a tres minutos pueden ser llevados a esta etapa, con una prioridad de búsqueda media. Aquí, solo los índices que tengan la configuración de "WARM" en su construcción podrán ser candidatos, a diferencia de la etapa HOT, donde cualquiera puede alojar información.
 	
-	* En la fase COLD, solo los índices con edad mayor a diez minutos pueden ser llevados a esta etapa, con una prioridad de búsqueda baja. Al igual que en la etapa WARM, se tiene una configuración especial que hace que solo los índices con "COLD" en su configucación puedan ser candidatos.
+* En la fase COLD, solo los índices con edad mayor a diez minutos pueden ser llevados a esta etapa, con una prioridad de búsqueda baja. Al igual que en la etapa WARM, se tiene una configuración especial que hace que solo los índices con "COLD" en su configucación puedan ser candidatos.
 
 	
 2. Con el clúster corriendo, ejecutamos el siguiente comando: 
@@ -202,10 +202,10 @@ curl -X PUT "localhost:9200/webseries-000001?pretty" -H 'Content-Type: applicati
 	}
 ```
 
-	Esta política le indica a elasticsearch que debe realizar un nuevo snapshot cada primer minuto de cada hora, nombrándolos como 'snap-now' o 'snap-<fecha>' de ser más antiguos.
-	También existe ua política de retención, que es la eliminación de los snapshots más antiguos. En este, se eliminarán snapshots con más de 80 minutos de longevidad, siempre que haya más de tres.
+Esta política le indica a elasticsearch que debe realizar un nuevo snapshot cada primer minuto de cada hora, nombrándolos como 'snap-now' o 'snap-<fecha>' de ser más antiguos.
+También existe ua política de retención, que es la eliminación de los snapshots más antiguos. En este, se eliminarán snapshots con más de 80 minutos de longevidad, siempre que haya más de tres.
 	
-	* [SLM_Repository.json](./SLM_Repository.json)
+* [SLM_Repository.json](./SLM_Repository.json)
 	
 ```
 	{
@@ -249,4 +249,4 @@ Si el clúster no nos permite crear las políticas de snapshots dentro de los se
 
 ## Licencia
 
-See [LICENCE](./LICENCE)
+See [LICENSE](./LICENSE)
